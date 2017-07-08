@@ -16,10 +16,11 @@
 
 package com.google.youtube.gaming.chat;
 
+import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 
 /**
  * Main entry point for YouTube Chat. Provides the chat service API to other mods, e.g.
@@ -50,9 +51,9 @@ public class YouTubeChat {
   }
 
   @EventHandler
-  public void serverLoad(FMLServerStartingEvent event) {
-    YouTubeChatMock.register();
-    YouTubeCommand command = new YouTubeCommand((ChatService) YouTubeChat.getService());
-    event.registerServerCommand(command);
+  public void init(FMLInitializationEvent event) {
+      ChatService service = new ChatService();
+      ClientCommandHandler.instance.registerCommand(new YouTubeCommand(service));
+      ClientCommandHandler.instance.registerCommand(new YouTubeChatMock());
   }
 }
