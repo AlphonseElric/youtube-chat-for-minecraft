@@ -23,7 +23,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
-import net.minecraft.world.World;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,15 +33,12 @@ import java.util.List;
  *
  * /ytchat [start|stop|logout|echoStart|echoStop]
  */
-public class YouTubeCommand extends CommandBase implements  YouTubeChatMessageListener {
-  private final List aliases;
+public class YouTubeCommand extends CommandBase implements YouTubeChatMessageListener {
+  private List<String> aliases = new ArrayList<>();
   private ChatService service;
 
   public YouTubeCommand(ChatService service) {
     this.service = service;
-    aliases = new ArrayList();
-    aliases.add("ytchat");
-    aliases.add("ytc");
   }
 
   @Override
@@ -57,48 +53,48 @@ public class YouTubeCommand extends CommandBase implements  YouTubeChatMessageLi
 
   @Override
   public List getCommandAliases() {
-    return this.aliases;
+    aliases.add("ytchat");
+    aliases.add("ytc");
+
+    return aliases;
   }
 
   @Override
   public void processCommand(ICommandSender sender, String[] args) {
-    World world = sender.getEntityWorld();
-    if (!world.isRemote) {
-      if (args.length == 0) {
-        showUsage(sender);
+    if (args.length == 0) {
+      showUsage(sender);
+      return;
+    }
+
+    if (args[0].equalsIgnoreCase("start")) {
+      YouTubeConfiguration configuration = YouTubeConfiguration.getInstance();
+      String clientSecret = configuration.getClientSecret();
+      if (clientSecret == null || clientSecret.isEmpty()) {
+        showMessage("No client secret configurated", sender);
         return;
       }
-
-      if (args[0].equalsIgnoreCase("start")) {
-        YouTubeConfiguration configuration = YouTubeConfiguration.getInstance();
-        String clientSecret = configuration.getClientSecret();
-        if (clientSecret == null || clientSecret.isEmpty()) {
-          showMessage("No client secret configurated", sender);
-          return;
-        }
-        service.start(configuration.getVideoId(), clientSecret, sender);
-      } else if (args[0].equalsIgnoreCase("stop")) {
-        service.stop(sender);
-      } else if (args[0].equalsIgnoreCase("logout")) {
-        service.stop(sender);
-        try {
-          Auth.clearCredentials();
-        } catch (IOException e) {
-          showMessage(e.getMessage(), sender);
-        }
-      } else {
-        if (args[0].equalsIgnoreCase("echoStart")) {
-          if (!service.isInitialized()) {
-            showMessage("Service is not initialized", sender);
-            showUsage(sender);
-          } else {
-            service.subscribe(this);
-          }
-        } else if (args[0].equalsIgnoreCase("echoStop")) {
-          service.unsubscribe(this);
-        } else {
+      service.start(configuration.getVideoId(), clientSecret, sender);
+    } else if (args[0].equalsIgnoreCase("stop")) {
+      service.stop(sender);
+    } else if (args[0].equalsIgnoreCase("logout")) {
+      service.stop(sender);
+      try {
+        Auth.clearCredentials();
+      } catch (IOException e) {
+        showMessage(e.getMessage(), sender);
+      }
+    } else {
+      if (args[0].equalsIgnoreCase("echoStart")) {
+        if (!service.isInitialized()) {
+          showMessage("Service is not initialized", sender);
           showUsage(sender);
+        } else {
+          service.subscribe(this);
         }
+      } else if (args[0].equalsIgnoreCase("echoStop")) {
+        service.unsubscribe(this);
+      } else {
+        showUsage(sender);
       }
     }
   }
@@ -111,6 +107,10 @@ public class YouTubeCommand extends CommandBase implements  YouTubeChatMessageLi
     sender.addChatMessage(new ChatComponentText(message));
   }
 
+  private void showStreamMessage(LiveChatMessageAuthorDetails author, String message, ICommandSender sender) {
+    sender.addChatMessage(new ChatComponentText(author.getDisplayName() + ": " + message));
+  }
+
   @Override
   public boolean canCommandSenderUseCommand(ICommandSender sender) {
     return true;
@@ -121,12 +121,15 @@ public class YouTubeCommand extends CommandBase implements  YouTubeChatMessageLi
     return false;
   }
 
+
+
   @Override
   public void onMessageReceived(
       LiveChatMessageAuthorDetails author,
       LiveChatSuperChatDetails superChatDetails,
       String message) {
-    showMessage(message, Minecraft.getMinecraft().thePlayer);
+
+    showStreamMessage(author, message, Minecraft.getMinecraft().thePlayer);
     if (superChatDetails != null
         && superChatDetails.getAmountMicros() != null
         && superChatDetails.getAmountMicros().longValue() > 0) {

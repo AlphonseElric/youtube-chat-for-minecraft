@@ -19,7 +19,6 @@ package com.google.youtube.gaming.chat;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
 /**
@@ -48,12 +47,8 @@ public class YouTubeChat {
   @EventHandler
   public void preInit(FMLPreInitializationEvent event) {
     YouTubeConfiguration.initialize(event.getSuggestedConfigurationFile());
-  }
 
-  @EventHandler
-  public void init(FMLInitializationEvent event) {
-      ChatService service = new ChatService();
-      ClientCommandHandler.instance.registerCommand(new YouTubeCommand(service));
-      ClientCommandHandler.instance.registerCommand(new YouTubeChatMock());
+    ClientCommandHandler.instance.registerCommand(new YouTubeCommand(new ChatService()));
+    ClientCommandHandler.instance.registerCommand(new YouTubeChatMock());
   }
 }

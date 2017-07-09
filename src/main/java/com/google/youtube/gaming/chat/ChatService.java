@@ -19,16 +19,11 @@ package com.google.youtube.gaming.chat;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.YouTubeScopes;
-import com.google.api.services.youtube.model.LiveBroadcast;
-import com.google.api.services.youtube.model.LiveBroadcastListResponse;
-import com.google.api.services.youtube.model.LiveChatMessage;
-import com.google.api.services.youtube.model.LiveChatMessageAuthorDetails;
-import com.google.api.services.youtube.model.LiveChatMessageListResponse;
-import com.google.api.services.youtube.model.LiveChatMessageSnippet;
-import com.google.api.services.youtube.model.LiveChatSuperChatDetails;
-import com.google.api.services.youtube.model.LiveChatTextMessageDetails;
-import com.google.api.services.youtube.model.Video;
-import com.google.api.services.youtube.model.VideoListResponse;
+import com.google.api.services.youtube.model.*;
+import net.minecraft.client.Minecraft;
+import net.minecraft.command.ICommandSender;
+import net.minecraft.util.ChatComponentText;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -36,9 +31,6 @@ import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
-import net.minecraft.client.Minecraft;
-import net.minecraft.command.ICommandSender;
-import net.minecraft.util.ChatComponentText;
 
 /**
  * Manages connection to the YouTube chat service, posting chat messages, deleting chat messages,
@@ -59,7 +51,7 @@ class ChatService implements YouTubeChatService {
   private long nextPoll;
 
   public ChatService() {
-    listeners = new ArrayList<YouTubeChatMessageListener>();
+    listeners = new ArrayList<>();
   }
 
   public void start(
@@ -68,83 +60,80 @@ class ChatService implements YouTubeChatService {
       final ICommandSender sender) {
     executor = Executors.newCachedThreadPool();
     executor.execute(
-        new Runnable() {
-          @Override
-          public void run() {
-            try {
-              // Build auth scopes
-              List<String> scopes = new ArrayList<String>();
-              scopes.add(YouTubeScopes.YOUTUBE_FORCE_SSL);
-              scopes.add(YouTubeScopes.YOUTUBE);
+            () -> {
+              try {
+                // Build auth scopes
+                List<String> scopes = new ArrayList<>();
+                scopes.add(YouTubeScopes.YOUTUBE_FORCE_SSL);
+                scopes.add(YouTubeScopes.YOUTUBE);
 
-              // Authorize the request
-              Credential credential = Auth.authorize(scopes, clientSecret, YouTubeChat.MODID);
+                // Authorize the request
+                Credential credential = Auth.authorize(scopes, clientSecret, YouTubeChat.MODID);
 
-              // This object is used to make YouTube Data API requests
-              youtube =
-                  new YouTube.Builder(Auth.HTTP_TRANSPORT, Auth.JSON_FACTORY, credential)
-                      .setApplicationName(YouTubeChat.APPNAME)
-                      .build();
+                // This object is used to make YouTube Data API requests
+                youtube =
+                    new YouTube.Builder(Auth.HTTP_TRANSPORT, Auth.JSON_FACTORY, credential)
+                        .setApplicationName(YouTubeChat.APPNAME)
+                        .build();
 
-              // Get the live chat id
-              String identity;
-              if (videoId != null && !videoId.isEmpty()) {
-                identity = "videoId " + videoId;
-                YouTube.Videos.List videoList = youtube.videos()
-                    .list("liveStreamingDetails")
-                    .setFields("items/liveStreamingDetails/activeLiveChatId")
-                    .setId(videoId);
-                VideoListResponse response = videoList.execute();
-                for (Video v : response.getItems()) {
-                  liveChatId = v.getLiveStreamingDetails().getActiveLiveChatId();
-                  if (liveChatId != null && !liveChatId.isEmpty()) {
-                    System.out.println("Live chat id: " + liveChatId);
-                    break;
+                // Get the live chat id
+                String identity;
+                if (videoId != null && !videoId.isEmpty()) {
+                  identity = "videoId " + videoId;
+                  YouTube.Videos.List videoList = youtube.videos()
+                      .list("liveStreamingDetails")
+                      .setFields("items/liveStreamingDetails/activeLiveChatId")
+                      .setId(videoId);
+                  VideoListResponse response = videoList.execute();
+                  for (Video v : response.getItems()) {
+                    liveChatId = v.getLiveStreamingDetails().getActiveLiveChatId();
+                    if (liveChatId != null && !liveChatId.isEmpty()) {
+                      System.out.println("Live chat id: " + liveChatId);
+                      break;
+                    }
+                  }
+                } else {
+                  identity = "current user";
+                  YouTube.LiveBroadcasts.List broadcastList = youtube
+                      .liveBroadcasts()
+                      .list("snippet")
+                      .setFields("items/snippet/liveChatId")
+                      .setBroadcastType("all")
+                      .setBroadcastStatus("active");
+                  LiveBroadcastListResponse broadcastListResponse = broadcastList.execute();
+                  for (LiveBroadcast b : broadcastListResponse.getItems()) {
+                    liveChatId = b.getSnippet().getLiveChatId();
+                    if (liveChatId != null && !liveChatId.isEmpty()) {
+                      System.out.println("Live chat id: " + liveChatId);
+                      break;
+                    }
                   }
                 }
-              } else {
-                identity = "current user";
-                YouTube.LiveBroadcasts.List broadcastList = youtube
-                    .liveBroadcasts()
-                    .list("snippet")
-                    .setFields("items/snippet/liveChatId")
-                    .setBroadcastType("all")
-                    .setBroadcastStatus("active");
-                LiveBroadcastListResponse broadcastListResponse = broadcastList.execute();
-                for (LiveBroadcast b : broadcastListResponse.getItems()) {
-                  liveChatId = b.getSnippet().getLiveChatId();
-                  if (liveChatId != null && !liveChatId.isEmpty()) {
-                    System.out.println("Live chat id: " + liveChatId);
-                    break;
-                  }
+
+                if (liveChatId == null || liveChatId.isEmpty()) {
+                  showMessage("Could not find live chat for " + identity, sender);
+                  return;
                 }
-              }
 
-              if (liveChatId == null || liveChatId.isEmpty()) {
-                showMessage("Could not find live chat for " + identity, sender);
-                return;
+                // Initialize next page token
+                LiveChatMessageListResponse response = youtube
+                    .liveChatMessages()
+                    .list(liveChatId, "snippet")
+                    .setFields("nextPageToken, pollingIntervalMillis")
+                    .execute();
+                nextPageToken = response.getNextPageToken();
+                isInitialized = true;
+                if (pollTimer == null && !listeners.isEmpty()) {
+                  poll(response.getPollingIntervalMillis());
+                } else {
+                  nextPoll = System.currentTimeMillis() + response.getPollingIntervalMillis();
+                }
+                showMessage("YTC Service started", sender);
+              } catch (Throwable t) {
+                showMessage(t.getMessage(), sender);
+                t.printStackTrace();
               }
-
-              // Initialize next page token
-              LiveChatMessageListResponse response = youtube
-                  .liveChatMessages()
-                  .list(liveChatId, "snippet")
-                  .setFields("nextPageToken, pollingIntervalMillis")
-                  .execute();
-              nextPageToken = response.getNextPageToken();
-              isInitialized = true;
-              if (pollTimer == null && !listeners.isEmpty()) {
-                poll(response.getPollingIntervalMillis());
-              } else {
-                nextPoll = System.currentTimeMillis() + response.getPollingIntervalMillis();
-              }
-              showMessage("YTC Service started", sender);
-            } catch (Throwable t) {
-              showMessage(t.getMessage(), sender);
-              t.printStackTrace();
-            }
-          }
-        });
+            });
   }
 
   public void stop(ICommandSender sender) {
@@ -194,29 +183,26 @@ class ChatService implements YouTubeChatService {
     }
 
     executor.execute(
-        new Runnable() {
-          @Override
-          public void run() {
-            try {
-              LiveChatMessage liveChatMessage = new LiveChatMessage();
-              LiveChatMessageSnippet snippet = new LiveChatMessageSnippet();
-              snippet.setType("textMessageEvent");
-              snippet.setLiveChatId(liveChatId);
-              LiveChatTextMessageDetails details = new LiveChatTextMessageDetails();
-              details.setMessageText(message);
-              snippet.setTextMessageDetails(details);
-              liveChatMessage.setSnippet(snippet);
-              YouTube.LiveChatMessages.Insert liveChatInsert =
-                  youtube.liveChatMessages().insert("snippet", liveChatMessage);
-              LiveChatMessage response = liveChatInsert.execute();
-              onComplete.accept(response.getId());
-            } catch (Throwable t) {
-              onComplete.accept(null);
-              showMessage(t.getMessage(), Minecraft.getMinecraft().thePlayer);
-              t.printStackTrace();
-            }
-          }
-        });
+            () -> {
+              try {
+                LiveChatMessage liveChatMessage = new LiveChatMessage();
+                LiveChatMessageSnippet snippet = new LiveChatMessageSnippet();
+                snippet.setType("textMessageEvent");
+                snippet.setLiveChatId(liveChatId);
+                LiveChatTextMessageDetails details = new LiveChatTextMessageDetails();
+                details.setMessageText(message);
+                snippet.setTextMessageDetails(details);
+                liveChatMessage.setSnippet(snippet);
+                YouTube.LiveChatMessages.Insert liveChatInsert =
+                    youtube.liveChatMessages().insert("snippet", liveChatMessage);
+                LiveChatMessage response = liveChatInsert.execute();
+                onComplete.accept(response.getId());
+              } catch (Throwable t) {
+                onComplete.accept(null);
+                showMessage(t.getMessage(), Minecraft.getMinecraft().thePlayer.getCommandSenderEntity());
+                t.printStackTrace();
+              }
+            });
   }
 
   public void deleteMessage(final String messageId, final Runnable onComplete) {
@@ -226,21 +212,18 @@ class ChatService implements YouTubeChatService {
     }
 
     executor.execute(
-        new Runnable() {
-          @Override
-          public void run() {
-            try {
-              YouTube.LiveChatMessages.Delete liveChatDelete =
-                  youtube.liveChatMessages().delete(messageId);
-              liveChatDelete.execute();
-              onComplete.run();
-            } catch (Throwable t) {
-              showMessage(t.getMessage(), Minecraft.getMinecraft().thePlayer);
-              t.printStackTrace();
-              onComplete.run();
-            }
-          }
-        });
+            () -> {
+              try {
+                YouTube.LiveChatMessages.Delete liveChatDelete =
+                    youtube.liveChatMessages().delete(messageId);
+                liveChatDelete.execute();
+                onComplete.run();
+              } catch (Throwable t) {
+                showMessage(t.getMessage(), Minecraft.getMinecraft().thePlayer.getCommandSenderEntity());
+                t.printStackTrace();
+                onComplete.run();
+              }
+            });
   }
 
   private void poll(long delay) {
@@ -291,7 +274,7 @@ class ChatService implements YouTubeChatService {
   void broadcastMessage(
       LiveChatMessageAuthorDetails author, LiveChatSuperChatDetails details, String message) {
     for (YouTubeChatMessageListener listener :
-        new ArrayList<YouTubeChatMessageListener>(listeners)) {
+            new ArrayList<>(listeners)) {
       listener.onMessageReceived(author, details, message);
     }
   }

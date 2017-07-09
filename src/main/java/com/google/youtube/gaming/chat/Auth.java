@@ -88,6 +88,6 @@ public class Auth {
   }
 
   private static String getCredentialsDirectory() {
-    return System.getProperty("user.home") + "/" + CREDENTIALS_DIRECTORY;
+    return System.getProperty("user.home") + "\\" + CREDENTIALS_DIRECTORY;
   }
 }

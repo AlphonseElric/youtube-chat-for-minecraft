@@ -22,7 +22,6 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
-import net.minecraftforge.client.ClientCommandHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,15 +34,11 @@ import java.util.List;
 public class YouTubeChatMock extends CommandBase {
   private static final String COMMAND_NAME = "ytcmock";
 
-  private final List aliases;
+  private final List<String> aliases;
 
   public YouTubeChatMock() {
-    aliases = new ArrayList();
+    aliases = new ArrayList<>();
     aliases.add(COMMAND_NAME);
-  }
-
-  public static void register() {
-    ClientCommandHandler.instance.registerCommand(new YouTubeChatMock());
   }
 
   @Override
