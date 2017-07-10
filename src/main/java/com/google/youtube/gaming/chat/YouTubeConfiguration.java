@@ -27,6 +27,7 @@ public class YouTubeConfiguration {
   private static Configuration config;
   private String clientSecret;
   private String videoId;
+  private boolean superOnly;
 
   public static void initialize(File path) {
     instance = new YouTubeConfiguration(path);
@@ -58,6 +59,9 @@ public class YouTubeConfiguration {
         config
             .get(Configuration.CATEGORY_GENERAL, "videoId", "", "The id of the live video")
             .getString();
+    superOnly =
+        config
+            .get(Configuration.CATEGORY_GENERAL, "superOnly", false, "Receive super chats only").getBoolean();
   }
 
   public void reset() {
@@ -78,4 +82,6 @@ public class YouTubeConfiguration {
   public String getClientSecret() {
     return clientSecret;
   }
+
+  public boolean getSuperOnly() { return superOnly; }
 }

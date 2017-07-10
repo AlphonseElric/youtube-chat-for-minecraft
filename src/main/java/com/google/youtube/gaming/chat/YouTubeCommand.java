@@ -23,6 +23,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -108,7 +109,8 @@ public class YouTubeCommand extends CommandBase implements YouTubeChatMessageLis
   }
 
   private void showStreamMessage(LiveChatMessageAuthorDetails author, String message, ICommandSender sender) {
-    sender.addChatMessage(new ChatComponentText(author.getDisplayName() + ": " + message));
+    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[YTChat] " + (author.getIsChatModerator() ? EnumChatFormatting.BLUE : EnumChatFormatting.WHITE) +
+            (author.getIsChatOwner() ? EnumChatFormatting.GOLD : EnumChatFormatting.WHITE) + author.getDisplayName() + EnumChatFormatting.WHITE + ": " + message));
   }
 
   @Override
@@ -129,7 +131,10 @@ public class YouTubeCommand extends CommandBase implements YouTubeChatMessageLis
       LiveChatSuperChatDetails superChatDetails,
       String message) {
 
-    showStreamMessage(author, message, Minecraft.getMinecraft().thePlayer);
+    if(!YouTubeConfiguration.getInstance().getSuperOnly()) {
+      showStreamMessage(author, message, Minecraft.getMinecraft().thePlayer);
+    }
+
     if (superChatDetails != null
         && superChatDetails.getAmountMicros() != null
         && superChatDetails.getAmountMicros().longValue() > 0) {
