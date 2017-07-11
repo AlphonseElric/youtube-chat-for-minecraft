@@ -138,9 +138,14 @@ public class YouTubeCommand extends CommandBase implements YouTubeChatMessageLis
     if (superChatDetails != null
         && superChatDetails.getAmountMicros() != null
         && superChatDetails.getAmountMicros().longValue() > 0) {
-      showMessage("Received "
+
+      showMessage(EnumChatFormatting.RED + "[YTChat] "
+          + EnumChatFormatting.GREEN + "Received "
+          + EnumChatFormatting.GOLD
           + superChatDetails.getAmountDisplayString()
+          + EnumChatFormatting.GREEN
           + " from "
+          + (author.getIsChatModerator() ? EnumChatFormatting.BLUE : EnumChatFormatting.WHITE)
           + author.getDisplayName(), Minecraft.getMinecraft().thePlayer);
     }
   }
