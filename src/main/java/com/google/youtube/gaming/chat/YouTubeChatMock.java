@@ -77,7 +77,7 @@ public class YouTubeChatMock extends CommandBase {
     authorDetails.setDisplayName(author);
     authorDetails.setChannelId(author);
     ((ChatService) YouTubeChat.getService()).broadcastMessage(
-        authorDetails, new LiveChatSuperChatDetails(), message);
+        authorDetails, new LiveChatSuperChatDetails(), "MOCK" , message);
   }
 
   @Override

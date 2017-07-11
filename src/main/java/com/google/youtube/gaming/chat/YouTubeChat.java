@@ -20,6 +20,7 @@ import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import tv.twitch.chat.Chat;
 
 /**
  * Main entry point for YouTube Chat. Provides the chat service API to other mods, e.g.
@@ -30,7 +31,7 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 public class YouTubeChat {
   public static final String MODID = "ytchat";
   public static final String APPNAME = "YouTube Chat";
-  public static final String VERSION = "1.2.1_1.8.9";
+  public static final String VERSION = "1.3.0_1.8.9";
   public static final String GUI_FACTORY =
       "com.google.youtube.gaming.chat.YouTubeConfigurationGuiFactory";
 
@@ -48,7 +49,8 @@ public class YouTubeChat {
   public void preInit(FMLPreInitializationEvent event) {
     YouTubeConfiguration.initialize(event.getSuggestedConfigurationFile());
 
-    ClientCommandHandler.instance.registerCommand(new YouTubeCommand(new ChatService()));
+    ClientCommandHandler.instance.registerCommand(new YouTubeCommand((ChatService) getService()));
     ClientCommandHandler.instance.registerCommand(new YouTubeChatMock());
+    ClientCommandHandler.instance.registerCommand(new YouTubeDeleteCommand((ChatService) getService()));
   }
 }

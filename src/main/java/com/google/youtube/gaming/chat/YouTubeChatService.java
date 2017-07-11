@@ -16,6 +16,7 @@
 
 package com.google.youtube.gaming.chat;
 
+import com.google.api.services.youtube.model.LiveChatMessage;
 import com.google.api.services.youtube.model.LiveChatMessageAuthorDetails;
 import com.google.api.services.youtube.model.LiveChatSuperChatDetails;
 
@@ -34,6 +35,7 @@ public interface YouTubeChatService {
     void onMessageReceived(
         LiveChatMessageAuthorDetails author,
         LiveChatSuperChatDetails superChatDetails,
+        String id,
         String message);
   }
 

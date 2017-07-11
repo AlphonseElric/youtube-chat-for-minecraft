@@ -23,6 +23,7 @@ import com.google.api.services.youtube.model.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -128,7 +129,7 @@ class ChatService implements YouTubeChatService {
                 } else {
                   nextPoll = System.currentTimeMillis() + response.getPollingIntervalMillis();
                 }
-                showMessage("YTC Service started", sender);
+                showMessage(EnumChatFormatting.RED + "[YTChat] " + EnumChatFormatting.GREEN + " Service started", sender);
               } catch (Throwable t) {
                 showMessage(t.getMessage(), sender);
                 t.printStackTrace();
@@ -144,7 +145,7 @@ class ChatService implements YouTubeChatService {
     }
     liveChatId = null;
     isInitialized = false;
-    showMessage("YTC Service stopped", sender);
+    showMessage(EnumChatFormatting.RED + "[YTChat] " + EnumChatFormatting.DARK_RED + "Service stopped", sender);
   }
 
   @Override
@@ -199,7 +200,7 @@ class ChatService implements YouTubeChatService {
                 onComplete.accept(response.getId());
               } catch (Throwable t) {
                 onComplete.accept(null);
-                showMessage(t.getMessage(), Minecraft.getMinecraft().thePlayer.getCommandSenderEntity());
+                showMessage(t.getMessage(), Minecraft.getMinecraft().thePlayer);
                 t.printStackTrace();
               }
             });
@@ -219,7 +220,7 @@ class ChatService implements YouTubeChatService {
                 liveChatDelete.execute();
                 onComplete.run();
               } catch (Throwable t) {
-                showMessage(t.getMessage(), Minecraft.getMinecraft().thePlayer.getCommandSenderEntity());
+                showMessage(t.getMessage(), Minecraft.getMinecraft().thePlayer);
                 t.printStackTrace();
                 onComplete.run();
               }
@@ -258,6 +259,7 @@ class ChatService implements YouTubeChatService {
                 broadcastMessage(
                     message.getAuthorDetails(),
                     snippet.getSuperChatDetails(),
+                    message.getId(),
                     snippet.getDisplayMessage());
               }
               System.out.println("POLL DELAY: " + response.getPollingIntervalMillis());
@@ -272,10 +274,10 @@ class ChatService implements YouTubeChatService {
   }
 
   void broadcastMessage(
-      LiveChatMessageAuthorDetails author, LiveChatSuperChatDetails details, String message) {
+      LiveChatMessageAuthorDetails author, LiveChatSuperChatDetails details, String id, String message) {
     for (YouTubeChatMessageListener listener :
             new ArrayList<>(listeners)) {
-      listener.onMessageReceived(author, details, message);
+      listener.onMessageReceived(author, details, id , message);
     }
   }
 

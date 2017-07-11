@@ -16,18 +16,21 @@
 
 package com.google.youtube.gaming.chat;
 
-import com.google.api.services.youtube.model.LiveChatMessageAuthorDetails;
-import com.google.api.services.youtube.model.LiveChatSuperChatDetails;
+import com.google.api.services.youtube.model.*;
 import com.google.youtube.gaming.chat.YouTubeChatService.YouTubeChatMessageListener;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.event.ClickEvent;
+import net.minecraft.event.HoverEvent;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * An in-game command for managing the YouTube Chat service. Usage:
@@ -49,7 +52,7 @@ public class YouTubeCommand extends CommandBase implements YouTubeChatMessageLis
 
   @Override
   public String getCommandUsage(ICommandSender sender) {
-    return getCommandName() + " [start|stop|logout|echoStart|echoStop]";
+    return getCommandName() + " [start|stop|logout|echoStart|echoStop|post";
   }
 
   @Override
@@ -84,21 +87,31 @@ public class YouTubeCommand extends CommandBase implements YouTubeChatMessageLis
       } catch (IOException e) {
         showMessage(e.getMessage(), sender);
       }
-    } else {
-      if (args[0].equalsIgnoreCase("echoStart")) {
+    } else if (args[0].equalsIgnoreCase("echoStart"))
+    {
         if (!service.isInitialized()) {
           showMessage("Service is not initialized", sender);
           showUsage(sender);
         } else {
           service.subscribe(this);
         }
-      } else if (args[0].equalsIgnoreCase("echoStop")) {
+    } else if (args[0].equalsIgnoreCase("echoStop")) {
         service.unsubscribe(this);
-      } else {
+    } else if(args[0].equalsIgnoreCase("post")) {
+        StringBuilder message = new StringBuilder();
+        for (String arg: args) {
+            if(!arg.equalsIgnoreCase("post")) {
+                message.append(arg).append(" ");
+            }
+        }
+        Consumer<String> id = i -> showMessage(EnumChatFormatting.RED + "[YTChat] "
+            + EnumChatFormatting.GREEN + "Message Posted.", sender);
+        service.postMessage(message.toString(), id);
+    } else {
         showUsage(sender);
-      }
     }
   }
+
 
   private void showUsage(ICommandSender sender) {
     showMessage("Usage: " + getCommandUsage(sender), sender);
@@ -108,9 +121,13 @@ public class YouTubeCommand extends CommandBase implements YouTubeChatMessageLis
     sender.addChatMessage(new ChatComponentText(message));
   }
 
-  private void showStreamMessage(LiveChatMessageAuthorDetails author, String message, ICommandSender sender) {
-    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[YTChat] " + (author.getIsChatModerator() ? EnumChatFormatting.BLUE : EnumChatFormatting.WHITE) +
-            (author.getIsChatOwner() ? EnumChatFormatting.GOLD : EnumChatFormatting.WHITE) + author.getDisplayName() + EnumChatFormatting.WHITE + ": " + message));
+  private void showStreamMessage(LiveChatMessageAuthorDetails author, String message, String id, ICommandSender sender) {
+      ChatStyle chatStyle = new ChatStyle();
+      sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[YTChat] " + (author.getIsChatModerator() ? EnumChatFormatting.BLUE : EnumChatFormatting.WHITE) +
+          (author.getIsChatOwner() ? EnumChatFormatting.GOLD : EnumChatFormatting.WHITE) + author.getDisplayName() + EnumChatFormatting.WHITE + ": " + message)
+          .setChatStyle(chatStyle.setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "del " + id)))
+          .setChatStyle(chatStyle.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText(EnumChatFormatting.RED + "Click to delete this message!"))))
+      );
   }
 
   @Override
@@ -129,10 +146,11 @@ public class YouTubeCommand extends CommandBase implements YouTubeChatMessageLis
   public void onMessageReceived(
       LiveChatMessageAuthorDetails author,
       LiveChatSuperChatDetails superChatDetails,
+      String id,
       String message) {
 
     if(!YouTubeConfiguration.getInstance().getSuperOnly()) {
-      showStreamMessage(author, message, Minecraft.getMinecraft().thePlayer);
+      showStreamMessage(author, message, id, Minecraft.getMinecraft().thePlayer);
     }
 
     if (superChatDetails != null
